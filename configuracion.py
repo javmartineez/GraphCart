@@ -19,8 +19,8 @@ MONGO_CONFIG = {
 
 # Rutas de los archivos
 DATA_PATHS = {
-    "toys_games": "data/Toys_and_Games_5.json",
-    "video_games": "data/Video_Games_5.json",
-    "digital_music": "data/Digital_Music_5.json",
-    "musical_instruments": "data/Musical_Instruments_5.json",
+    "juguetes": "data/Toys_and_Games_5.json",
+    "videojuegos": "data/Video_Games_5.json",
+    "musica": "data/Digital_Music_5.json",
+    "instrumentos": "data/Musical_Instruments_5.json",
 }

@@ -7,6 +7,8 @@ import json
 from datetime import datetime
 
 
+#REVISAR TERCERA FORMA NORMAL REVIEWTIME, UNIXREVIEWTIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 def get_sql_connection():
     """
     Función de conexión con MySQL
@@ -75,7 +77,7 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
 
     # 2. Tabla PRODUCT
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS PRODUCT(
+        CREATE TABLE IF NOT EXISTS PRODUCT_CATEGORY(
             asin VARCHAR(255) PRIMARY KEY,
             category TEXT
         )
@@ -89,14 +91,13 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
             asin VARCHAR(255),
             overall REAL,
             reviewTime DATE,
+            unixReviewTime BIGINT,
             FOREIGN KEY (reviewerID) REFERENCES REVIEWER_NAME(reviewerID),
-            FOREIGN KEY (asin) REFERENCES PRODUCT(asin)      
+            FOREIGN KEY (asin) REFERENCES PRODUCT_CATEGORY(asin)      
         )
     """)
 
-    
     connection.commit()
-    print("Base de datos SQL creada")
 
 
 def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysql.connections.Connection, 
@@ -133,17 +134,21 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
                 batch_reviewers.append((data['reviewerID'], data.get('reviewerName', 'Unknown')))
                 batch_products.append((data['asin'], categoria))
                 batch_reviews.append((
-                    review_id_counter, data['reviewerID'], data['asin'], 
-                    data['overall'], fecha_sql))
+                                    review_id_counter, 
+                                    data['reviewerID'], 
+                                    data['asin'], 
+                                    data['overall'], 
+                                    fecha_sql, 
+                                    data['unixReviewTime']))
 
                 # Preparar datos para MongoDB
                 batch_mongo.append({
-                    "reviewID": review_id_counter,
-                    "category": categoria,
-                    "reviewText": data.get('reviewText', ''),
-                    "summary": data.get('summary', ''),
-                    "helpful": data.get('helpful', [0, 0])
-                })
+                                    "reviewID": review_id_counter,
+                                    "category": categoria,
+                                    "reviewText": data.get('reviewText', ''),
+                                    "summary": data.get('summary', ''),
+                                    "helpful": data.get('helpful', [0, 0])
+                                })
 
                 review_id_counter += 1
 
@@ -169,8 +174,8 @@ def execute_batch(cursor, col_mongo, reviewers, products, reviews, mongo_docs):
     """
     
     cursor.executemany("INSERT IGNORE INTO REVIEWER_NAME(reviewerID, reviewerName) VALUES (%s, %s)", reviewers)
-    cursor.executemany("INSERT IGNORE INTO PRODUCT(asin, category) VALUES (%s, %s)", products)
-    cursor.executemany("INSERT INTO REVIEW(reviewID, reviewerID, asin, overall, reviewTime) VALUES (%s, %s, %s, %s, %s)", reviews)
+    cursor.executemany("INSERT IGNORE INTO PRODUCT_CATEGORY(asin, category) VALUES (%s, %s)", products)
+    cursor.executemany("INSERT INTO REVIEW(reviewID, reviewerID, asin, overall, reviewTime, unixReviewTime) VALUES (%s, %s, %s, %s, %s, %s)", reviews)
     
     col_mongo.insert_many(mongo_docs)
 
