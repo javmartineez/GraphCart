@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 
 
-#REVISAR TERCERA FORMA NORMAL REVIEWTIME, UNIXREVIEWTIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#Preguntas por FORMA NORMAL REVIEWTIME, UNIXREVIEWTIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 def get_sql_connection():
     """
