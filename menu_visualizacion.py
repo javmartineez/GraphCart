@@ -424,7 +424,6 @@ def plot_usuarios_word_custom(cursor, coleccion_mongo, word:str):
 
 
 
-
 def mostrar_menu():
 
     """
@@ -457,6 +456,7 @@ def mostrar_menu():
     console.print(tabla)
     
     return Prompt.ask("Selecciona una opción", choices=[str(i) for i in range(1, 9)])
+
 
 
 def main():
