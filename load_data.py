@@ -8,6 +8,7 @@ from datetime import datetime
 
 
 #Preguntas por FORMA NORMAL REVIEWTIME, UNIXREVIEWTIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# Preguntar tambien si los plots de tableau tienen que ser iguales que los ejemplos o puedo hacer un pie chart 
 
 def get_sql_connection():
     """
@@ -100,7 +101,7 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
     connection.commit()
 
 
-def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysql.connections.Connection, 
+def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysql.cursors.Cursor, 
                 collection_mongo:pymongo.collection):
     """
     Función encargada de leer los ficheros, procesar los datos e insertalos por lotes.
