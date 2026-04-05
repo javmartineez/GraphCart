@@ -1,3 +1,5 @@
+"Javier Martínez Berenguer"
+
 import configuracion as conf 
 import load_data as db
 import pymysql

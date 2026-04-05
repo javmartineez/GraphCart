@@ -1,3 +1,5 @@
+"Javier Martínez Berenguer"
+
 from neo4j import GraphDatabase
 import configuracion as conf 
 import load_data as db 

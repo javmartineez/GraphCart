@@ -32,11 +32,11 @@ def plot_reviews_por_año(cursor, categoria="todo"):
     try:
         if categoria.lower() == "todo":
             sql = """
-                SELECT YEAR(reviewTime) AS anio, COUNT(reviewID) AS num_reviews
+                SELECT YEAR(reviewTime) AS año, COUNT(reviewID) AS num_reviews
                 FROM REVIEW 
-                GROUP BY anio
-                ORDER BY anio;
-            """
+                GROUP BY año
+                ORDER BY año;
+                """
             params = None
         else: 
             sql = """
