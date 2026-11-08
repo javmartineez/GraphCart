@@ -1,7 +1,7 @@
 "Javier Martínez Berenguer"
 
 
-# Credenciales y conexión MySQL
+# MySQL credentials and connection
 MYSQL_CONFIG = {
     "host": "localhost",
     "user": "root",
@@ -9,7 +9,7 @@ MYSQL_CONFIG = {
     "database": "AmazonReviewsDB" 
 }
 
-# Credenciales y conexión MongoDB
+# MongoDB credentials and connection
 MONGO_CONFIG = {
     "host": "localhost",
     "port": 27017,
@@ -17,7 +17,7 @@ MONGO_CONFIG = {
     "collection": "reviews"  
 }
 
-# Rutas de los archivos
+# Data file paths
 DATA_PATHS = {
     "juguetes": "data/Toys_and_Games_5.json",
     "videojuegos": "data/Video_Games_5.json",

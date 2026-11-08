@@ -12,16 +12,16 @@ console = Console()
 
 def obtener_articulos(cursor, userid, categoria):
     """
-    Función para obtener todos los artículos de la categoría 
-    pedida que el usuario aún no ha consumido. 
+    Gets every item of the requested category
+    that the user has not consumed yet.
 
-    Args: 
-        - userid (str): identificador del usuario
-        - categoria (str): tipo de producto
-    
+    Args:
+        - userid (str): user identifier
+        - categoria (str): product type
+
     Returns:
-        - list[str]: Lista con los asin de los artículos disponibles 
-                     para recomendar al usuario (los aún no consumidos).
+        - list[str]: list with the asin of the items available
+                     to recommend to the user (those not consumed yet).
     """
     sql = """
             SELECT DISTINCT p.asin
@@ -39,14 +39,14 @@ def obtener_articulos(cursor, userid, categoria):
 
 def recomendar(cursor, userid, categoria):
     """
-    Función que recibe un identificador de usuario y un tipo de 
-    producto y devuelve los 10 artículos más populares
-    que no ha consumido. La popularidad se mide en función del 
-    número de reviews.
+    Receives a user identifier and a product type
+    and returns the 10 most popular items
+    the user has not consumed. Popularity is measured by the
+    number of reviews.
 
-    Args: 
-        - userid (str): identificador del usuario
-        - categoria (str): tipo de producto
+    Args:
+        - userid (str): user identifier
+        - categoria (str): product type
     """
 
     asins = obtener_articulos(cursor, userid, categoria)
@@ -70,10 +70,10 @@ def recomendar(cursor, userid, categoria):
 
 def verificar_usuario(cursor, userid) -> bool:
     """
-    Comprueba si el identificador de usuario existe en la base de datos MySQL.
-    
+    Checks whether the user identifier exists in the MySQL database.
+
     Returns:
-        - bool: True si el usuario existe, False en caso contrario.
+        - bool: True if the user exists, False otherwise.
     """
     sql = """SELECT reviewerID 
              FROM reviewer_name WHERE reviewerID = %s 
@@ -87,11 +87,11 @@ def verificar_usuario(cursor, userid) -> bool:
 
 def main():
     """
-    Función principal de ejecución
+    Main entry point
     """
 
     console.print(Panel.fit(
-        "[bold cyan]SISTEMA DE RECOMENDACIÓN [/bold cyan]\n[italic]Proyecto BBDD - Javier Martinez Berenguer[/italic]",
+        "[bold cyan]RECOMMENDATION SYSTEM [/bold cyan]\n[italic]Databases project - Javier Martinez Berenguer[/italic]",
         border_style="blue"
     ))
 
@@ -100,40 +100,40 @@ def main():
         cursor = conn_sql.cursor()
         cursor.execute(f"USE {conf.MYSQL_CONFIG['database']}")
     except Exception as e:
-        console.print(f"[bold red]Error de conexión:[/bold red] {e}")
+        console.print(f"[bold red]Connection error:[/bold red] {e}")
         return
 
-    userid = Prompt.ask("[bold yellow]Introduce tu ID de usuario[/bold yellow] (ej. A3V6Z4RCDGRC44)").strip()
+    userid = Prompt.ask("[bold yellow]Enter your user ID[/bold yellow] (e.g. A3V6Z4RCDGRC44)").strip()
 
     if not verificar_usuario(cursor, userid):
-        console.print(f"\n[bold red]Error:[/bold red] El usuario [bold]{userid}[/bold] no existe.")
+        console.print(f"\n[bold red]Error:[/bold red] User [bold]{userid}[/bold] does not exist.")
         cursor.close()
         conn_sql.close()
         return
     
     categoria = Prompt.ask(
-        "[bold yellow]Selecciona una categoría[/bold yellow]", 
+        "[bold yellow]Select a category[/bold yellow]", 
         choices=["juguetes", "videojuegos", "musica", "instrumentos"],
         default="juguetes"
     ).strip()
 
-    console.print("[bold green]Buscando las mejores recomendaciones...[/bold green]")
+    console.print("[bold green]Looking for the best recommendations...[/bold green]")
     recomendaciones = recomendar(cursor, userid, categoria)
     console.print("\n")
 
     if recomendaciones:
-        table = Table(title=f"Top 10 Recomendaciones para {userid}", title_style="bold magenta")
-        table.add_column("Posición", justify="center", style="cyan", no_wrap=True)
-        table.add_column("ASIN (Producto)", style="white")
-        table.add_column("Popularidad (Reviews)", justify="right", style="green")
+        table = Table(title=f"Top 10 recommendations for {userid}", title_style="bold magenta")
+        table.add_column("Rank", justify="center", style="cyan", no_wrap=True)
+        table.add_column("ASIN (Product)", style="white")
+        table.add_column("Popularity (reviews)", justify="right", style="green")
 
         for i, (asin, popularidad) in enumerate(recomendaciones, 1):
             table.add_row(str(i), asin, f"{popularidad:,}")
 
         console.print(table)
-        console.print(f"\n Se han encontrado {len(recomendaciones)} productos ideales para este perfil.")
+        console.print(f"\n Found {len(recomendaciones)} ideal products for this profile.")
     else:
-        console.print("No se han encontrado artículos nuevos para recomendar en esta categoría.")
+        console.print("No new items to recommend were found in this category.")
 
 
     cursor.close()

@@ -21,12 +21,12 @@ console = Console()
 def plot_reviews_por_año(cursor, categoria="todo"):
 
     """
-    Gráfico de barras con la evolución del número de reviews realizadas
-    por año desde 1998 hasta 2014, con la opción de filtrar por categoría. 
+    Bar chart with the number of reviews written per year
+    from 1998 to 2014, optionally filtered by category.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - categoria (str): categoría de producto, puesto a 'todo' como default
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - categoria (str): product category, 'todo' (all) by default
     """
 
     try:
@@ -53,13 +53,13 @@ def plot_reviews_por_año(cursor, categoria="todo"):
         resultados = cursor.fetchall()
 
         if not resultados:
-            console.print(f"No hay datos para la categoría: {categoria}")
+            console.print(f"No data for category: {categoria}")
             return
 
-        df = pd.DataFrame(resultados, columns=['Año', 'Número de reviews'])
+        df = pd.DataFrame(resultados, columns=['Year', 'Number of reviews'])
         plt.figure(figsize=(10, 6))
-        sns.barplot(data=df, x='Año', y='Número de reviews', color='blue')
-        plt.title(f"Reviews por año - {categoria}")
+        sns.barplot(data=df, x='Year', y='Number of reviews', color='blue')
+        plt.title(f"Reviews per year - {categoria}")
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.show()
@@ -72,13 +72,13 @@ def plot_reviews_por_año(cursor, categoria="todo"):
 def plot_popularidad(cursor, categoria="todo"):
 
     """
-    Plot de popularidad de articulos basada en el numero de 
-    reviews creadas para cada artículo, con la opción de filtrar 
-    por categoría. 
+    Item popularity plot based on the number of
+    reviews written for each item, optionally filtered
+    by category.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - categoria (str): categoría de producto, puesto a 'todo' como default
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - categoria (str): product category, 'todo' (all) by default
     """
 
     try:
@@ -106,16 +106,16 @@ def plot_popularidad(cursor, categoria="todo"):
         resultados = cursor.fetchall()
 
         if not resultados:
-            console.print(f"[bold red] No hay datos para la categoría: {categoria}[/bold red]")
+            console.print(f"[bold red] No data for category: {categoria}[/bold red]")
             return
 
-        df = pd.DataFrame(resultados, columns=["Artículo", 'Número de reviews'])
+        df = pd.DataFrame(resultados, columns=["Item", 'Number of reviews'])
         df['Ranking'] = range(1, len(df) + 1)
 
         plt.figure(figsize=(10, 6))
-        sns.lineplot(data=df, x='Ranking', y='Número de reviews', color='blue')
-        plt.title(f"Popularidad de artículos - {categoria}")
-        plt.xlabel("Artículos")
+        sns.lineplot(data=df, x='Ranking', y='Number of reviews', color='blue')
+        plt.title(f"Item popularity - {categoria}")
+        plt.xlabel("Items")
         plt.tight_layout()
         plt.show()
 
@@ -127,13 +127,13 @@ def plot_popularidad(cursor, categoria="todo"):
 def plot_histograma_nota(cursor, categoria="todo", asin=None):
 
     """
-    Diagrama de barras con el numero de reviews para cada posible valoración 
-    (del 1-5), por categoría, por artículo individual o todo junto.
+    Bar chart with the number of reviews for each possible rating
+    (1-5), by category, by individual item or for everything together.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - categoria (str): categoría de producto, puesto a 'todo' como default
-        - asin (str): id del articulo para filtrar, puesto a None como default
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - categoria (str): product category, 'todo' (all) by default
+        - asin (str): item id to filter by, None by default
     """
 
     try:
@@ -147,7 +147,7 @@ def plot_histograma_nota(cursor, categoria="todo", asin=None):
                 ORDER BY overall
             """
             params = (asin,)
-            titulo = f"Distribución de notas para el artículo {asin}"
+            titulo = f"Rating distribution for item {asin}"
 
         elif categoria.lower() == "todo":
             sql = """
@@ -157,7 +157,7 @@ def plot_histograma_nota(cursor, categoria="todo", asin=None):
                 ORDER BY overall
             """
             params = None
-            titulo = "Distribución de notas: Todas las categorías"
+            titulo = "Rating distribution: all categories"
             
         else:
             sql = """
@@ -169,16 +169,16 @@ def plot_histograma_nota(cursor, categoria="todo", asin=None):
                 ORDER BY r.overall
             """
             params = (categoria,)
-            titulo = f"Distribución de notas - {categoria}"
+            titulo = f"Rating distribution - {categoria}"
 
         cursor.execute(sql, params)
         resultados = cursor.fetchall()
 
         if not resultados:
             if asin:
-                console.print(f"Error:El artículo {asin} no existe.")
+                console.print(f"Error: item {asin} does not exist.")
             else:
-                console.print(f"Error: Sin datos para la categoría {categoria}.")
+                console.print(f"Error: no data for category {categoria}.")
             return
 
         df = pd.DataFrame(resultados, columns=['nota', 'frecuencia'])
@@ -187,8 +187,8 @@ def plot_histograma_nota(cursor, categoria="todo", asin=None):
         sns.barplot(data=df, x='nota', y='frecuencia', color='blue')
 
         plt.title(titulo, fontsize=14)
-        plt.xlabel("Valoración (Overall)")
-        plt.ylabel("Número de Reviews")
+        plt.xlabel("Rating (Overall)")
+        plt.ylabel("Number of reviews")
         
         plt.grid(axis='y', linestyle='--', alpha=0.7)
         plt.tight_layout()
@@ -202,13 +202,13 @@ def plot_histograma_nota(cursor, categoria="todo", asin=None):
 def plot_evolucion_temporal(cursor, categoria="todo"):
 
     """
-    Plot de la evolucion temporal de reviews basada en la suma del numero 
-    total de reviews hasta una fecha concreta, con posibilidad de filtrar 
-    por categoría. 
+    Plot of the evolution of reviews over time, based on the cumulative
+    number of reviews up to each date, optionally filtered
+    by category.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - categoria (str): categoría de producto, puesto a 'todo' como default
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - categoria (str): product category, 'todo' (all) by default
     """
     
     try: 
@@ -236,7 +236,7 @@ def plot_evolucion_temporal(cursor, categoria="todo"):
         resultados = cursor.fetchall()
 
         if not resultados:
-            print(f"No se encontraron datos para la categoría: {categoria}")
+            print(f"No data found for category: {categoria}")
             return
 
 
@@ -246,15 +246,15 @@ def plot_evolucion_temporal(cursor, categoria="todo"):
         plt.figure(figsize=(10, 6))
         sns.lineplot(data=df, x='timestamp', y='reviews_acumuladas', color='blue')
 
-        plt.title(f"Evolución acumulada de reviews: {categoria}")
-        plt.xlabel("Tiempo (Unix Timestamp)")
-        plt.ylabel("Número acumulado de reviews")
+        plt.title(f"Cumulative reviews over time: {categoria}")
+        plt.xlabel("Time (Unix timestamp)")
+        plt.ylabel("Cumulative number of reviews")
         
         plt.tight_layout()
         plt.show()
     
     except pymysql.MySQLError as e:
-        console.print(f"[bold red]Error en la consulta SQL:[/bold red] {e}")
+        console.print(f"[bold red]SQL query error:[/bold red] {e}")
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
 
@@ -263,10 +263,10 @@ def plot_evolucion_temporal(cursor, categoria="todo"):
 def plot_reviews_usuario(cursor):
 
     """
-    Histograma del número de reviews generadas por usuario.
+    Histogram of the number of reviews written per user.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
     """
 
     try:
@@ -280,7 +280,7 @@ def plot_reviews_usuario(cursor):
         resultados = cursor.fetchall()
 
         if not resultados:
-            print("No hay datos suficientes para generar esta gráfica.")
+            print("Not enough data to generate this chart.")
             return
 
         df = pd.DataFrame(resultados, columns=['Usuario', 'Num_Reviews'])
@@ -288,9 +288,9 @@ def plot_reviews_usuario(cursor):
         plt.figure(figsize=(10, 6))
         sns.histplot(df['Num_Reviews'], bins=100, kde=False, color='blue')
 
-        plt.title("Distribución de reviews por usuario")
-        plt.xlabel("Número de reviews")
-        plt.ylabel("Número de usuarios")
+        plt.title("Distribution of reviews per user")
+        plt.xlabel("Number of reviews")
+        plt.ylabel("Number of users")
 
         plt.tight_layout()
         plt.show()
@@ -303,23 +303,23 @@ def plot_reviews_usuario(cursor):
 def plot_nube_palabras(coleccion_mongo, categoria):
 
     """
-    Nube de palabras generada a partir del campo summary para aquellas 
-    palabras con una longitud superior a 3 letras. El tamaño de cada 
-    palabra en el gráfico viene determinado por su prevalencia. No existe 
-    posibilidad de filtrar por todas las categorías juntas.
+    Word cloud generated from the summary field for words
+    longer than 3 letters. The size of each word in the chart
+    is determined by how often it appears. It cannot be
+    generated for all categories together.
 
-    Args: 
-        - coleccion_mongo (pymongo.collection): colección de documentos 'Reviews'
-        - categoria (str): categoría del producto.
+    Args:
+        - coleccion_mongo (pymongo.collection): 'Reviews' document collection
+        - categoria (str): product category.
     """
 
     
     if categoria.lower() == "todo" or categoria not in conf.DATA_PATHS.keys():
-        print("Error: categoría inválida.")
-        print(f"Categorías disponibles: {list(conf.DATA_PATHS.keys())}")
+        print("Error: invalid category.")
+        print(f"Available categories: {list(conf.DATA_PATHS.keys())}")
         return
 
-    print(f"Generando nube de palabras para la categoría: {categoria}...")
+    print(f"Generating word cloud for category: {categoria}...")
 
     try:
         cursor_mongo = coleccion_mongo.find(
@@ -327,7 +327,7 @@ def plot_nube_palabras(coleccion_mongo, categoria):
                                             {"summary": 1, "_id": 0}
                                         )
 
-        # Unimos todos los summaries en un solo string
+        # Join all the summaries into a single string
         texto_completo = ""
         for doc in cursor_mongo:
             summary = doc.get('summary', '')
@@ -335,10 +335,10 @@ def plot_nube_palabras(coleccion_mongo, categoria):
                 texto_completo += " " + str(summary)
 
         if not texto_completo.strip():
-            print(f"No hay palabras suficientes para generar la nube en {categoria}.")
+            print(f"Not enough words to generate the cloud for {categoria}.")
             return
 
-        #filtro de longitud > 3 caracteres
+        #length filter > 3 characters
         palabras_filtradas = [word for word in texto_completo.split() if len(word) > 3]
         texto_final = " ".join(palabras_filtradas)
 
@@ -351,7 +351,7 @@ def plot_nube_palabras(coleccion_mongo, categoria):
 
         plt.figure(figsize=(10, 5))
         plt.imshow(wordcloud, interpolation='bilinear')
-        plt.title(f"Palabras más frecuentes en reviews de {categoria}")
+        plt.title(f"Most frequent words in {categoria} reviews")
         plt.axis("off")
         plt.tight_layout(pad=0)
         plt.show()
@@ -363,15 +363,15 @@ def plot_nube_palabras(coleccion_mongo, categoria):
 
 def plot_usuarios_word_custom(cursor, coleccion_mongo, word:str):
     """
-    Histograma de la cantidad de veces que un usuario ha escrito la palabra indicada 
-    por consola a lo largo de todas sus reviews históricamente.
+    Histogram of how many times each user has written the word entered
+    in the console across all their historical reviews.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - coleccion_mongo (pymongo.collection): colección de documentos 'Reviews'
-        - word (str): palabra a analizar
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - coleccion_mongo (pymongo.collection): 'Reviews' document collection
+        - word (str): word to analyse
     """
-    print(f"Obteniendo el numero de veces que la palabra '{word}' ha sido utilizada por usuario...")
+    print(f"Counting how many times each user has used the word '{word}'...")
     
     try:
         cursor_mongo = coleccion_mongo.find(
@@ -390,7 +390,7 @@ def plot_usuarios_word_custom(cursor, coleccion_mongo, word:str):
                     'word_count': count})
 
         if not counts_list:
-            print(f"No se encontraron menciones de la palabra '{word}'")
+            print(f"No mentions of the word '{word}' were found")
             return
 
         df_mongo = pd.DataFrame(counts_list)
@@ -411,9 +411,9 @@ def plot_usuarios_word_custom(cursor, coleccion_mongo, word:str):
         sns.histplot(usuario_stats['word_count'], bins=15, color='blue', )
 
         plt.yscale('log') 
-        plt.title(f"Uso de la palabra '{word.upper()}' por usuario")
-        plt.xlabel(f"Veces que el usuario ha usado la palabra {word}")
-        plt.ylabel("Número de usuarios (Escala Logarítmica)")
+        plt.title(f"Use of the word '{word.upper()}' per user")
+        plt.xlabel(f"Times the user has used the word {word}")
+        plt.ylabel("Number of users (log scale)")
         
         plt.grid(axis='y', linestyle='--', alpha=0.6)
         plt.tight_layout()
@@ -427,48 +427,48 @@ def plot_usuarios_word_custom(cursor, coleccion_mongo, word:str):
 def mostrar_menu():
 
     """
-    Función de menú mostrando las opciones de visualización mediante 
-    la librería Rich.
+    Menu showing the visualisation options using
+    the Rich library.
 
-    Returns: 
-        - Prompt: Opción a escoger de entre las mostradas en el menú
+    Returns:
+        - Prompt: option chosen from those shown in the menu
     """
   
     console.print(Panel.fit(
-        "[bold cyan]Amazon Reviews - Dashboard de Visualización[/bold cyan]\n"
-        "[italic white]Proyecto de Bases de Datos - ICAI - Javier Martínez Berenguer[/italic white]",
+        "[bold cyan]Amazon Reviews - Visualisation Dashboard[/bold cyan]\n"
+        "[italic white]Databases Project - ICAI - Javier Martínez Berenguer[/italic white]",
         border_style="green"
     ))
 
     tabla = Table(show_header=True, header_style="bold magenta", expand=True)
-    tabla.add_column("Opción", style="dim", width=6, justify="center")
-    tabla.add_column("Descripción")
+    tabla.add_column("Option", style="dim", width=6, justify="center")
+    tabla.add_column("Description")
 
-    tabla.add_row("1", "Evolución de reviews por años")
-    tabla.add_row("2", "Popularidad de artículos")
-    tabla.add_row("3", "Histograma de reviews por nota")
-    tabla.add_row("4", "Evolución temporal de reviews")
-    tabla.add_row("5", "Distribución de reviews por usuario")
-    tabla.add_row("6", "Nube de palabras por categoría")
-    tabla.add_row("7", "Uso de palabras por usuario (Apartado Libre)")
-    tabla.add_row("8", "[bold red]Salir[/bold red]")
+    tabla.add_row("1", "Reviews per year")
+    tabla.add_row("2", "Item popularity")
+    tabla.add_row("3", "Histogram of reviews by rating")
+    tabla.add_row("4", "Reviews over time")
+    tabla.add_row("5", "Distribution of reviews per user")
+    tabla.add_row("6", "Word cloud by category")
+    tabla.add_row("7", "Word usage per user (free section)")
+    tabla.add_row("8", "[bold red]Quit[/bold red]")
 
     console.print(tabla)
     
-    return Prompt.ask("Selecciona una opción", choices=[str(i) for i in range(1, 9)])
+    return Prompt.ask("Select an option", choices=[str(i) for i in range(1, 9)])
 
 
 
 def main():
     """
-    Función principal de ejecución.
+    Main entry point.
     """
 
     sql_conn = db.get_sql_connection()
     mongo_col = db.get_mongo_connection()
     
     if not sql_conn or mongo_col is None:
-        console.print("[bold red]Error: No se pudo conectar con las bases de datos.[/bold red]")
+        console.print("[bold red]Error: could not connect to the databases.[/bold red]")
         return
 
     cursor = sql_conn.cursor()
@@ -479,49 +479,49 @@ def main():
     while True:
         opcion = mostrar_menu()
 
-        # 1: Reviews por año
+        # 1: Reviews per year
         if opcion == "1":
-            cat = Prompt.ask("Filtra por una categoría (ENTER para incluir todas)", choices=categorias_validas, default="todo")
+            cat = Prompt.ask("Filter by category (ENTER to include all)", choices=categorias_validas, default="todo")
             plot_reviews_por_año(cursor, cat)
             
-        # 2: Popularidad
+        # 2: Popularity
         elif opcion == "2":
-            cat = Prompt.ask("Filtra por una categoría (ENTER para incluir todas)", choices=categorias_validas, default="todo")
+            cat = Prompt.ask("Filter by category (ENTER to include all)", choices=categorias_validas, default="todo")
             plot_popularidad(cursor, cat)
 
-        # 3: Histograma por nota
+        # 3: Histogram by rating
         elif opcion == "3":
-            console.print("\n[bold cyan]Filtro de Histograma:[/bold cyan]")
-            tipo = Prompt.ask("¿Filtrar por (a)rtículo individual o (c)ategoría?", choices=["a", "c"], default="c")
-            
+            console.print("\n[bold cyan]Histogram filter:[/bold cyan]")
+            tipo = Prompt.ask("Filter by individual (a)rticle or (c)ategory?", choices=["a", "c"], default="c")
+
             if tipo == "a":
-                asin_input = Prompt.ask("Introduce el ASIN del artículo")
+                asin_input = Prompt.ask("Enter the item ASIN")
                 plot_histograma_nota(cursor, asin=asin_input)
             else:
-                cat_input = Prompt.ask("Filtra por una categoría (ENTER para incluir todas)", choices=categorias_validas, default="todo")
+                cat_input = Prompt.ask("Filter by category (ENTER to include all)", choices=categorias_validas, default="todo")
                 plot_histograma_nota(cursor, categoria=cat_input)
 
-        # 4: Evolución acumulada
+        # 4: Cumulative evolution
         elif opcion == "4":
-            cat = Prompt.ask("Filtra por una categoría (ENTER para incluir todas)", choices=categorias_validas, default="todo")
+            cat = Prompt.ask("Filter by category (ENTER to include all)", choices=categorias_validas, default="todo")
             plot_evolucion_temporal(cursor, cat)
 
-        # 5: Reviews por usuario
+        # 5: Reviews per user
         elif opcion == "5":
             plot_reviews_usuario(cursor)
 
-        # 6: Nube de palabras (Mongo)
+        # 6: Word cloud (Mongo)
         elif opcion == "6":
-            cat = Prompt.ask("Introduce categoría específica", default="juguetes")
+            cat = Prompt.ask("Enter a specific category", default="juguetes")
             plot_nube_palabras(mongo_col, cat)
             
-        # 7: Palabra personalizada
+        # 7: Custom word
         elif opcion == "7":
-            word = Prompt.ask("¿Qué palabra quieres analizar?")
+            word = Prompt.ask("Which word do you want to analyse?")
             plot_usuarios_word_custom(cursor, mongo_col, word)
             
         elif opcion == "8":
-            console.print("[bold yellow]¡Hasta pronto![/bold yellow]")
+            console.print("[bold yellow]See you soon![/bold yellow]")
             break
         
         console.print("\n" + "—" * 60 + "\n")

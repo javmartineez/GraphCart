@@ -14,22 +14,22 @@ NEW_PATH = "data/Sports_and_Outdoors_5.json"
 def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysql.cursors.Cursor, 
                 collection_mongo:pymongo.collection):
     """
-    Función encargada de leer un nuevo fichero e insertarlo en la base de datos existente
+    Reads a new file and inserts it into the existing database
     Args:
-        - connection (pymysql.connections.Connection): Objeto de conexión para confirmar (commit) 
-                                                   los cambios en el esquema.
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - collection_mongo (pymongo.collection): colección de documentos en MongoDB
+        - connection (pymysql.connections.Connection): connection object used to commit
+                                                   the schema changes.
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - collection_mongo (pymongo.collection): MongoDB document collection
     """
 
     batch_size = 5000
     
-    # Obtener el ID máximo actual
+    # Get the current maximum ID
     cursor_sql.execute("SELECT MAX(reviewID) FROM REVIEW")
     max_id = cursor_sql.fetchone()[0]
     review_id_counter = (max_id + 1) if max_id is not None else 1
 
-    # Actualizamos nuevos datos en el fichero de configuración 
+    # Register the new data in the configuration 
     conf.DATA_PATHS[CATEGORIA] = NEW_PATH
         
     batch_reviews = []
@@ -41,11 +41,11 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
         for linea in f:
             data = json.loads(linea)
 
-            # Procesar Fecha 
+            # Parse the date 
             fecha_dt = datetime.strptime(data['reviewTime'], '%m %d, %Y')
             fecha_sql = fecha_dt.strftime('%Y-%m-%d')
 
-            # Preparar lotes para SQL
+            # Prepare SQL batches
             batch_reviewers.append((data['reviewerID'], data.get('reviewerName', 'Unknown')))
             batch_products.append((data['asin'], CATEGORIA))
             batch_reviews.append((
@@ -56,7 +56,7 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
                                 fecha_sql, 
                                 data['unixReviewTime']))
 
-            # Preparar datos para MongoDB
+            # Prepare MongoDB data
             batch_mongo.append({
                                 "reviewID": review_id_counter,
                                 "category": CATEGORIA,
@@ -67,25 +67,25 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
 
             review_id_counter += 1
 
-            # Inserción por lotes cuando alcanzamos el batch_size
+            # Insert a batch once batch_size is reached
             if len(batch_reviews) >= batch_size:
                 execute_batch(cursor_sql, collection_mongo, 
                                 batch_reviewers, batch_products, batch_reviews, batch_mongo)
-                # Limpiar listas para el siguiente lote
+                # Clear the lists for the next batch
                 batch_reviewers, batch_products, batch_reviews, batch_mongo = [], [], [], []
 
-        # Insertar los restos que queden al final del archivo
+        # Insert whatever is left at the end of the file
         if batch_reviews:
             execute_batch(cursor_sql, collection_mongo, 
                             batch_reviewers, batch_products, batch_reviews, batch_mongo)
 
     connection_sql.commit()
-    print("Carga de datos finalizada.")
+    print("Data load finished.")
 
 
 def execute_batch(cursor, col_mongo, reviewers, products, reviews, mongo_docs):
     """
-    Función auxiliar para ejecutar los inserts de un lote
+    Helper function that runs the inserts of a batch
     """
     
     cursor.executemany("INSERT IGNORE INTO REVIEWER_NAME(reviewerID, reviewerName) VALUES (%s, %s)", reviewers)
@@ -98,7 +98,7 @@ def execute_batch(cursor, col_mongo, reviewers, products, reviews, mongo_docs):
 
 def main():
     """
-    Función principal de ejecución
+    Main entry point
     """
 
     conn_sql = db.get_sql_connection()

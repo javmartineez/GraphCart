@@ -7,12 +7,9 @@ import json
 from datetime import datetime
 
 
-#Preguntas por FORMA NORMAL REVIEWTIME, UNIXREVIEWTIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# Preguntar tambien si los plots de tableau tienen que ser iguales que los ejemplos o puedo hacer un pie chart 
-
 def get_sql_connection():
     """
-    Función de conexión con MySQL
+    Opens a connection to MySQL
     
     Returns: 
             - connection_sql (obj)
@@ -24,13 +21,13 @@ def get_sql_connection():
         return connection_sql
 
     except pymysql.MySQLError as e: 
-        print("Error al conectar con MySQL: ", e)
+        print("Error connecting to MySQL: ", e)
         return None
 
 
 def get_mongo_connection():
     """
-    Función de conexión con MONGODB
+    Opens a connection to MongoDB
     
     Returns: 
             - collection (obj)
@@ -43,21 +40,21 @@ def get_mongo_connection():
         return collection
     
     except Exception as e: 
-        print("Error al conectar con MongoDB: ", e)
+        print("Error connecting to MongoDB: ", e)
         return None
     
 
 def create_sql_database(connection:pymysql.connections.Connection, cursor: pymysql.cursors.Cursor):
 
     """
-    Crea la estructura de la base de datos en MySQL y sus tablas relacionadas
-    y define las claves primarias y foráneas para asegurar la integridad
-    referencial de los datos.
+    Creates the MySQL database structure and its related tables,
+    defining primary and foreign keys to ensure the referential
+    integrity of the data.
 
     Args:
-        connection (pymysql.connections.Connection): Objeto de conexión para confirmar (commit) 
-                                                   los cambios en el esquema.
-        cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
+        connection (pymysql.connections.Connection): connection object used to commit
+                                                   the schema changes.
+        cursor (pymysql.cursors.Cursor): active cursor used to run the statements
     """
     
     db_name = conf.MYSQL_CONFIG["database"]
@@ -68,7 +65,7 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
     sql = f"USE {db_name}"
     cursor.execute(sql)
 
-    # 1. Tabla REVIEWER_NAME
+    # 1. REVIEWER_NAME table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS REVIEWER_NAME(
             reviewerID VARCHAR(255) PRIMARY KEY,
@@ -76,7 +73,7 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
         )
     """)
 
-    # 2. Tabla PRODUCT
+    # 2. PRODUCT table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS PRODUCT_CATEGORY(
             asin VARCHAR(255) PRIMARY KEY,
@@ -84,7 +81,7 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
         )
     """)
 
-    # 3. Tabla REVIEWS
+    # 3. REVIEWS table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS REVIEW(
             reviewID BIGINT PRIMARY KEY,
@@ -104,19 +101,19 @@ def create_sql_database(connection:pymysql.connections.Connection, cursor: pymys
 def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysql.cursors.Cursor, 
                 collection_mongo:pymongo.collection):
     """
-    Función encargada de leer los ficheros, procesar los datos e insertalos por lotes.
+    Reads the files, processes the data and inserts it in batches.
     Args:
-        - connection (pymysql.connections.Connection): Objeto de conexión para confirmar (commit) 
-                                                   los cambios en el esquema.
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - collection_mongo (pymongo.collection): colección de documentos en MongoDB
+        - connection (pymysql.connections.Connection): connection object used to commit
+                                                   the schema changes.
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - collection_mongo (pymongo.collection): MongoDB document collection
     """
 
     batch_size = 5000
     review_id_counter = 1
 
     for categoria, ruta in conf.DATA_PATHS.items():
-        print(f"Procesando categoría: {categoria}...")
+        print(f"Processing category: {categoria}...")
         
         batch_reviews = []
         batch_reviewers = []
@@ -127,11 +124,11 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
             for linea in f:
                 data = json.loads(linea)
 
-                # Procesar Fecha 
+                # Parse the date 
                 fecha_dt = datetime.strptime(data['reviewTime'], '%m %d, %Y')
                 fecha_sql = fecha_dt.strftime('%Y-%m-%d')
 
-                # Preparar lotes para SQL
+                # Prepare SQL batches
                 batch_reviewers.append((data['reviewerID'], data.get('reviewerName', 'Unknown')))
                 batch_products.append((data['asin'], categoria))
                 batch_reviews.append((
@@ -142,7 +139,7 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
                                     fecha_sql, 
                                     data['unixReviewTime']))
 
-                # Preparar datos para MongoDB
+                # Prepare MongoDB data
                 batch_mongo.append({
                                     "reviewID": review_id_counter,
                                     "category": categoria,
@@ -153,25 +150,25 @@ def insert_data(connection_sql:pymysql.connections.Connection, cursor_sql:pymysq
 
                 review_id_counter += 1
 
-                # Inserción por lotes cuando alcanzamos el batch_size
+                # Insert a batch once batch_size is reached
                 if len(batch_reviews) >= batch_size:
                     execute_batch(cursor_sql, collection_mongo, 
                                    batch_reviewers, batch_products, batch_reviews, batch_mongo)
-                    # Limpiar listas para el siguiente lote
+                    # Clear the lists for the next batch
                     batch_reviewers, batch_products, batch_reviews, batch_mongo = [], [], [], []
 
-            # Insertar los restos que queden al final del archivo
+            # Insert whatever is left at the end of the file
             if batch_reviews:
                 execute_batch(cursor_sql, collection_mongo, 
                                batch_reviewers, batch_products, batch_reviews, batch_mongo)
 
     connection_sql.commit()
-    print("Carga de datos finalizada.")
+    print("Data load finished.")
 
 
 def execute_batch(cursor, col_mongo, reviewers, products, reviews, mongo_docs):
     """
-    Función auxiliar para ejecutar los inserts de un lote
+    Helper function that runs the inserts of a batch
     """
     
     cursor.executemany("INSERT IGNORE INTO REVIEWER_NAME(reviewerID, reviewerName) VALUES (%s, %s)", reviewers)
@@ -195,9 +192,9 @@ if __name__ == "__main__":
             insert_data(sql_conn, cursor, mongo_col)
             
         except Exception as e:
-            print(f"Ocurrió un error durante la ejecución: {e}")
+            print(f"An error occurred during execution: {e}")
         finally:
             cursor.close()
             sql_conn.close()
     else:
-        print("No se pudo establecer la conexión con las bases de datos.")
+        print("Could not connect to the databases.")

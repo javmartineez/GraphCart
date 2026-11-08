@@ -17,7 +17,7 @@ driver = GraphDatabase.driver(uri, auth=("neo4j", "YOUR_NEO4J_PASSWORD"))
 
 def limpiar_base_datos():
     """
-    Borra todos los nodos y relaciones actuales para empezar desde cero.
+    Deletes all current nodes and relationships to start from scratch.
     """
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
@@ -25,11 +25,11 @@ def limpiar_base_datos():
 
 def obtener_n_usuarios_max_reviews(cursor, n:int) -> list:
     """
-    Función para obtener los n usuarios con más reviews realizadas 
+    Gets the n users with the most reviews
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - n (int): número de usuarios a recuperar
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - n (int): number of users to retrieve
     """
 
     sql = """
@@ -49,25 +49,25 @@ def obtener_n_usuarios_max_reviews(cursor, n:int) -> list:
 def calcular_similitudes_pearson(cursor, user_ids:list, limite_comparar=None) -> list[tuple]:
 
     """
-    Función encargada de calcular las similitud de cada uno de los usuarios 
-    enviados por argumento con respecto a los demás. 
+    Computes the similarity of each of the users passed as
+    argument with respect to the others.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo ejecutar las sentencias
-        - user_ids(list): lista de top N usuarios con más reviews realizadas.
-        - limite_comparar(int): variable para simplificar el numero de usuarios a cargar 
-                                en neo4J independientemente del números de usuarios enviados
-                                por argumento.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the statements
+        - user_ids(list): list of the top N users with the most reviews.
+        - limite_comparar(int): optional cap on the number of users to load
+                                into Neo4j, regardless of how many users are passed
+                                as argument.
 
-    Returns: 
-        - similitudes(list[tuple]): lista de tuplas [(u_i, u_j, similitud)] para todos los pares 
-                                    de usuarios
+    Returns:
+        - similitudes(list[tuple]): list of tuples [(u_i, u_j, similarity)] for every pair
+                                    of users
     """
 
     if limite_comparar: 
         user_ids = user_ids[:limite_comparar]
     
-    # Obtener las valoraciones de cada usuario para cada articulo
+    # Get each user's rating for each item
     format_strings = ','.join(['%s'] * len(user_ids))
     sql = f"""
         SELECT reviewerID, asin, overall 
@@ -77,7 +77,7 @@ def calcular_similitudes_pearson(cursor, user_ids:list, limite_comparar=None) ->
     cursor.execute(sql, tuple(user_ids))
     ratings_raw = cursor.fetchall()
 
-    # Organizamos los datos en un diccionario: { user_id: { asin: rating } }
+    # Organise the data in a dictionary: { user_id: { asin: rating } }
     user_ratings = {}
     for uid, asin, rating in ratings_raw:
         if uid not in user_ratings:
@@ -87,7 +87,7 @@ def calcular_similitudes_pearson(cursor, user_ids:list, limite_comparar=None) ->
     user_means = {uid: sum(ratings.values()) / len(ratings) 
                   for uid, ratings in user_ratings.items()}
 
-    # Calcular las similitudes por pares
+    # Compute pairwise similarities
     similitudes = []
     n = len(user_ids)
     
@@ -123,19 +123,19 @@ def calcular_similitudes_pearson(cursor, user_ids:list, limite_comparar=None) ->
 def cargar_usuarios(similitudes:list): 
 
     """
-    Función para cargar los pares de usuarios y las similitudes entre ellos
-    en neo4J.
+    Loads the user pairs and the similarities between them
+    into Neo4j.
 
-    Args: 
-        - similitudes(list[tuple]): lista de tuplas [(u_i, u_j, similitud)] para todos los pares 
-                                    de usuarios
+    Args:
+        - similitudes(list[tuple]): list of tuples [(u_i, u_j, similarity)] for every pair
+                                    of users
     """
 
     with driver.session() as session:
             
             for u1, u2, sim in similitudes:
 
-                #debe ser una relacion bidireccional
+                #it must be a bidirectional relationship
                 consulta = """
                         MERGE (u1:USER {id: $id_user1})
                         MERGE (u2:USER {id: $id_user2})
@@ -148,13 +148,13 @@ def cargar_usuarios(similitudes:list):
                     """
                 session.run(consulta, id_user1=u1, id_user2=u2, similarity=sim)
 
-    print("Usuarios y similitudes cargadas.")
+    print("Users and similarities loaded.")
 
 
 def obtener_user_max_vecinos():
     """
-    Función de consulta en Neo4J para obtener el usuario con mayor número 
-    de vecinos en el grafo de similitudes. 
+    Neo4j query to get the user with the largest number
+    of neighbours in the similarity graph.
     """
 
     with driver.session() as session:
@@ -169,29 +169,29 @@ def obtener_user_max_vecinos():
         resultado = session.run(consulta)
         res = resultado.data()
     
-        print(f"El usuario con más vecinos es: {res[0]}")
+        print(f"The user with the most neighbours is: {res[0]}")
 
 
 def obtener_articulos_aleatorios(cursor, categoria:str, n:int) -> list:
     """
-    Función encargada de seleccionar un número n de artículos aleatorios de una 
-    categoría específica y extraer todas las reviews asociadas a dichos artículos. 
-    Recupera el id del usuario, el artículo, la nota de la review y el timestamp,
-    para posteriormente generar el grafo en Neo4J
-    
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
-        - categoria (str): tipo de producto [juguetes, videojuegos, musica, instrumentos].
-        - n (int): numero de artículos a escoger de forma aleatoria.
-    
+    Selects n random items from a specific
+    category and extracts every review associated with them.
+    Retrieves the user id, the item, the review rating and the timestamp,
+    to later build the graph in Neo4j
+
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
+        - categoria (str): product type [juguetes, videojuegos, musica, instrumentos].
+        - n (int): number of items to pick at random.
+
     Returns:
-        - reviews (list[tuple]): Lista de tuplas donde cada tupla contiene los datos de la 
-                                 review (reviewerID, asin, overall, unixReviewTime) correspondientes 
-                                 a los artículos aleatorios seleccionados. Retorna lista vacía si hay error.
+        - reviews (list[tuple]): list of tuples where each tuple holds the review data
+                                 (reviewerID, asin, overall, unixReviewTime) for
+                                 the selected random items. Returns an empty list on error.
     """
 
     try:
-        # Obtenemos todos los asin de la categoría pedida por el usuario
+        # Get every asin of the category requested by the user
         sql_asin = """
                     SELECT asin 
                     FROM product_category
@@ -203,7 +203,7 @@ def obtener_articulos_aleatorios(cursor, categoria:str, n:int) -> list:
         cantidad = min(n, len(todos_articulos))
         seleccionados = random.sample(todos_articulos, cantidad)
 
-        # Buscamos las reviews de los articulos seleccionados
+        # Fetch the reviews of the selected items
         format_strings = ','.join(['%s'] * len(seleccionados))
         sql_reviews = f"""
             SELECT reviewerID, asin, overall, unixReviewTime 
@@ -215,19 +215,19 @@ def obtener_articulos_aleatorios(cursor, categoria:str, n:int) -> list:
         return reviews
 
     except Exception as e:
-        print(f"Error al obtener artículos aleatorios: {e}")
+        print(f"Error getting random items: {e}")
         return []
 
 
 def cargar_reviews_articulos(reviews:list[tuple]):
     """
-    Carga en Neo4J los nodos de usuarios y artículos, estableciendo una 
-    relación (REVIEWED) entre ellos. Dicha relación incluye como propiedades 
-    la nota dada por el usuario y el momento de la review.
+    Loads the user and item nodes into Neo4j, creating a
+    (REVIEWED) relationship between them. The relationship stores as properties
+    the rating given by the user and the time of the review.
 
-    Args: 
-        - reviews (list[tuple]): Lista de tuplas obtenida de la base de datos 
-                                 SQL con el formato (reviewerID, asin, overall, unixReviewTime).
+    Args:
+        - reviews (list[tuple]): list of tuples obtained from the SQL database
+                                 in the format (reviewerID, asin, overall, unixReviewTime).
     """
 
     consulta = """
@@ -249,26 +249,26 @@ def cargar_reviews_articulos(reviews:list[tuple]):
 
                 session.run(consulta, uid=uid, asin=asin, rating=rating, time=time)
         
-        print(f"Se han procesado {len(reviews)} reviews.")
-        
+        print(f"{len(reviews)} reviews processed.")
+
     except Exception as e:
-        print(f"Error cargando en Neo4j: {e}")
+        print(f"Error loading into Neo4j: {e}")
 
 
 def obtener_usuarios_multi_categoria(cursor) -> dict:
 
     """
-    Obtiene los primeros 400 usuarios ordenados alfabéticamente por su nombre 
-    y filtra exclusivamente aquellos que han puntuado artículos de, al menos, 
-    dos tipos distintos. Retorna además la cantidad de artículos consumidos 
-    por cada tipo.
+    Gets the first 400 users sorted alphabetically by name
+    and keeps only those who have rated items of at least
+    two different types. Also returns the number of items consumed
+    of each type.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
 
     Returns:
-        - dict: Diccionario anidado con los usuarios que cumplen la condición. 
-                Estructura: {reviewerID: {categoria: conteo, ...}}
+        - dict: nested dictionary with the users that meet the condition.
+                Structure: {reviewerID: {category: count, ...}}
     """
 
     sql_400 = """
@@ -283,7 +283,7 @@ def obtener_usuarios_multi_categoria(cursor) -> dict:
 
     users_raw = [uid[0] for uid in resultado]
 
-    # Consulta para obtener los conteos por usuario y categoría
+    # Query to get the counts per user and category
     format_strings = ','.join(['%s'] * len(users_raw))
     sql = f"""
         SELECT r.reviewerID, p.category, COUNT(r.asin) as num_articulos
@@ -301,7 +301,7 @@ def obtener_usuarios_multi_categoria(cursor) -> dict:
             data[uid] = {}
         data[uid][cat] = conteo
 
-    # Nos quedamos con usuarios que tengan > 1 categoría
+    # Keep the users with > 1 category
     usuarios_filtrados = {uid: cats for uid, cats in data.items() if len(cats) > 1}
 
     return usuarios_filtrados
@@ -309,14 +309,14 @@ def obtener_usuarios_multi_categoria(cursor) -> dict:
 
 def cargar_usuarios_categorias(datos_usuarios:dict):
     """
-    Carga en Neo4J los nodos correspondientes a los usuarios y a las categorías 
-    de productos. Crea una relación (REVIEWED) entre el usuario y la categoría, 
-    almacenando como propiedad el número de artículos consumidos de dicho tipo.
+    Loads into Neo4j the nodes for the users and the product
+    categories. Creates a (REVIEWED) relationship between user and category,
+    storing as a property the number of items consumed of that type.
 
-    Args: 
-        - datos_usuarios (dict): Diccionario con la estructura 
-                                 {reviewerID: {categoria: cantidad, ...}} que contiene 
-                                 los usuarios que han puntuado más de una categoría.
+    Args:
+        - datos_usuarios (dict): dictionary with the structure
+                                 {reviewerID: {category: amount, ...}} containing
+                                 the users who have rated more than one category.
     """
     consulta = """
             MERGE (u:USER {id: $uid})
@@ -331,30 +331,30 @@ def cargar_usuarios_categorias(datos_usuarios:dict):
                 for cat_name, cantidad in categorias.items():
                     session.run(consulta, uid=uid, cat_name=cat_name, cantidad=cantidad)
 
-        print(f"Se han cargado {len(datos_usuarios)} usuarios en Neo4j.")
+        print(f"{len(datos_usuarios)} users loaded into Neo4j.")
 
     except Exception as e:
-        print(f"Error cargando categorías en Neo4j: {e}")
+        print(f"Error loading categories into Neo4j: {e}")
 
 
 def obtener_articulos_populares(cursor) -> tuple:
 
     """
-    Obtiene los 5 artículos más populares que tienen menos de 40 reviews, 
-    junto con todos los usuarios que los han puntuado. Además, calcula la 
-    cantidad de artículos que estos usuarios han puntuado en común en toda 
-    la base de datos.
+    Gets the 5 most popular items with fewer than 40 reviews,
+    together with every user who has rated them. It also computes
+    how many items these users have rated in common across the whole
+    database.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
 
     Returns:
-        - tuple: Una tupla que contiene dos listas:
-            1. rel_up (list[tuple]): Lista de tuplas (reviewerID, asin) que relaciona a los 
-                                     usuarios con los 5 artículos seleccionados.
-            2. rel_uu (list[tuple]): Lista de tuplas (reviewerID_1, reviewerID_2, comunes) 
-                                     que indica el número de artículos en común entre pares 
-                                     de usuarios.
+        - tuple: a tuple holding two lists:
+            1. rel_up (list[tuple]): list of tuples (reviewerID, asin) linking the
+                                     users to the 5 selected items.
+            2. rel_uu (list[tuple]): list of tuples (reviewerID_1, reviewerID_2, common)
+                                     with the number of items in common between pairs
+                                     of users.
     """
 
     sql_top_5 = """
@@ -397,15 +397,15 @@ def obtener_articulos_populares(cursor) -> tuple:
 
 def cargar_populares_comunes(rel_up:list, rel_uu:list):
     """
-    Carga en Neo4J los artículos más populares (<40 reviews) y los usuarios que 
-    los han puntuado. Además, genera relaciones de afinidad (SHARES_ITEMS) directamente 
-    entre dichos usuarios, indicando cuántos artículos tienen en común en toda la BBDD.
+    Loads into Neo4j the most popular items (<40 reviews) and the users who
+    rated them. It also creates affinity relationships (SHARES_ITEMS) directly
+    between those users, indicating how many items they have in common in the whole DB.
 
-    Args: 
-        - rel_up (list[tuple]): Lista de tuplas (reviewerID, asin) que relaciona a los 
-                                usuarios con los 5 artículos más populares.
-        - rel_uu (list[tuple]): Lista de tuplas (reviewerID_1, reviewerID_2, comunes) 
-                                que indica la cantidad de artículos en común entre dos usuarios.
+    Args:
+        - rel_up (list[tuple]): list of tuples (reviewerID, asin) linking the
+                                users to the 5 most popular items.
+        - rel_uu (list[tuple]): list of tuples (reviewerID_1, reviewerID_2, common)
+                                with the number of items two users have in common.
     """
     with driver.session() as session:
 
@@ -426,18 +426,18 @@ def cargar_populares_comunes(rel_up:list, rel_uu:list):
         for u1, u2, count in rel_uu:
             session.run(consulta_uu, uid1=u1, uid2=u2, count=count)
 
-    print(f"Cargados {len(rel_up)} enlaces usuario-producto y {len(rel_uu)} enlaces de afinidad.")
+    print(f"Loaded {len(rel_up)} user-product links and {len(rel_uu)} affinity links.")
 
 
 def apartado_1(cursor):
     """
-    Función principal de ejecución del apartado 4.1.
-    Obtiene los n usuarios con mayor número de reviews, calcula las similitudes 
-    (correlación de Pearson) entre cada par de usuarios, carga estas relaciones 
-    bidireccionales en Neo4J y muestra el usuario con más vecinos en el grafo.
+    Entry point for section 4.1.
+    Gets the n users with the most reviews, computes the similarities
+    (Pearson correlation) between every pair of users, loads these bidirectional
+    relationships into Neo4j and shows the user with the most neighbours in the graph.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
     """
 
     cursor.execute(f"USE {conf.MYSQL_CONFIG['database']}")
@@ -447,25 +447,25 @@ def apartado_1(cursor):
     similitudes = calcular_similitudes_pearson(cursor, user_ids)
 
     cargar_usuarios(similitudes)
-    console.print("[bold green]Carga finalizada. Ya puedes consultar los datos en Neo4J.[/bold green]")
+    console.print("[bold green]Load finished. You can now query the data in Neo4j.[/bold green]")
     obtener_user_max_vecinos()
 
 
 def apartado_2(cursor):
     """
-    Función principal de ejecución del apartado 4.2.
-    Solicita al usuario por terminal una categoría y un número de artículos 
-    aleatorios. Extrae de SQL dichos artículos junto con los usuarios que los 
-    han puntuado y los carga en Neo4J, incluyendo como propiedades en el enlace 
-    la nota y la fecha de la review.
+    Entry point for section 4.2.
+    Asks the user in the terminal for a category and a number of random
+    items. Extracts those items from SQL together with the users who
+    rated them and loads them into Neo4j, storing the review rating and date
+    as properties of the link.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
     """
 
     categorias = ["juguetes", "videojuegos", "musica", "instrumentos"]
-    categoria_user = Prompt.ask("Introduce categoría: ", choices=categorias, default="juguetes")
-    n_articulos = int(input("Introduce el número de articulos aleatorios: "))
+    categoria_user = Prompt.ask("Enter a category: ", choices=categorias, default="juguetes")
+    n_articulos = int(input("Enter the number of random items: "))
 
     resultados_sql = obtener_articulos_aleatorios(cursor, categoria_user, n_articulos)
 
@@ -475,14 +475,14 @@ def apartado_2(cursor):
 
 def apartado_3(cursor):
     """
-    Función principal de ejecución del apartado 4.3.
-    Selecciona los 400 primeros usuarios ordenados alfabéticamente y filtra 
-    exclusivamente a aquellos que han puntuado artículos de más de una categoría 
-    distinta. Carga en Neo4J los nodos de usuarios y tipos de artículo, añadiendo 
-    una propiedad con la cantidad de artículos consumidos de ese tipo.
+    Entry point for section 4.3.
+    Selects the first 400 users sorted alphabetically and keeps
+    only those who have rated items of more than one different
+    category. Loads the user and item-type nodes into Neo4j, adding
+    a property with the number of items consumed of that type.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
     """
 
     datos_usuarios = obtener_usuarios_multi_categoria(cursor)
@@ -491,36 +491,36 @@ def apartado_3(cursor):
 
 def apartado_4(cursor):
     """
-    Función principal de ejecución del apartado 4.4.
-    Extrae los 5 artículos más populares con menos de 40 reviews y los usuarios 
-    que los han puntuado. Carga en Neo4J las relaciones de consumo (usuario-artículo) 
-    y genera enlaces entre los propios usuarios indicando el número de 
-    artículos que tienen en común en toda la base de datos.
+    Entry point for section 4.4.
+    Extracts the 5 most popular items with fewer than 40 reviews and the users
+    who rated them. Loads the consumption relationships (user-item) into Neo4j
+    and creates links between the users themselves with the number of
+    items they have in common across the whole database.
 
-    Args: 
-        - cursor (pymysql.cursors.Cursor): Cursor activo para ejecutar las sentencias SQL.
+    Args:
+        - cursor (pymysql.cursors.Cursor): active cursor used to run the SQL statements.
     """
     rel_up, rel_uu = obtener_articulos_populares(cursor)
     cargar_populares_comunes(rel_up, rel_uu)
 
 def mostrar_menu() -> str:
     """
-    Función de menú mostrando las opciones mediante la librería Rich.
+    Menu showing the options using the Rich library.
 
-    Returns: 
-        - str: Opción a escoger de entre las mostradas en el menú
+    Returns:
+        - str: option chosen from those shown in the menu
     """
     texto_menu = """
-                [1] Obtener similitudes entre usuarios (Apartado 4.1)
-                [2] Obtener enlaces entre usuarios y artículos aleatorios (Apartado 4.2)
-                [3] Obtener usuarios multi-categoría (Apartado 4.3)
-                [4] Artículos populares y artículos en común (Apartado 4.4)
-                [0] Salir
+                [1] User similarities (section 4.1)
+                [2] Links between users and random items (section 4.2)
+                [3] Multi-category users (section 4.3)
+                [4] Popular items and items in common (section 4.4)
+                [0] Quit
                     """
-    console.print(Panel(texto_menu, title="[bold cyan]Menú Neo4J - Proyecto BD[/bold cyan]", expand=False))
-    
+    console.print(Panel(texto_menu, title="[bold cyan]Neo4j menu - Databases project[/bold cyan]", expand=False))
+
     opcion = Prompt.ask(
-        "[bold yellow]Selecciona una opción[/bold yellow]", 
+        "[bold yellow]Select an option[/bold yellow]",
         choices=["0", "1", "2", "3", "4", "5"], 
         default="0"
     )
@@ -528,17 +528,17 @@ def mostrar_menu() -> str:
 
 def main():
     """
-    Función principal de ejecución del programa. 
-    Gestiona la conexión a las bases de datos y el bucle del menú interactivo.
+    Main entry point of the program.
+    Handles the database connections and the interactive menu loop.
     """
-    # Establecer conexión con MySQL
+    # Connect to MySQL
     try:
         conn_sql = db.get_sql_connection()
         cursor = conn_sql.cursor()
         cursor.execute(f"USE {conf.MYSQL_CONFIG['database']}")
-        console.print("[bold green]Conexión a MySQL establecida correctamente.[/bold green]")
+        console.print("[bold green]Connected to MySQL successfully.[/bold green]")
     except Exception as e:
-        console.print(f"[bold red]Error conectando a MySQL: {e}[/bold red]")
+        console.print(f"[bold red]Error connecting to MySQL: {e}[/bold red]")
         return
 
     
@@ -549,32 +549,32 @@ def main():
             limpiar_base_datos()
 
             if opcion == "1":
-                console.print("\n[bold magenta]--- Ejecutando Apartado 4.1 ---[/bold magenta]")
+                console.print("\n[bold magenta]--- Running section 4.1 ---[/bold magenta]")
                 apartado_1(cursor)
                 
             elif opcion == "2":
-                console.print("\n[bold magenta]--- Ejecutando Apartado 4.2 ---[/bold magenta]") 
+                console.print("\n[bold magenta]--- Running section 4.2 ---[/bold magenta]") 
                 apartado_2(cursor)
-                console.print("[bold green]Carga finalizada. Ya puedes consultar los datos en Neo4J.[/bold green]")
+                console.print("[bold green]Load finished. You can now query the data in Neo4j.[/bold green]")
                 
             elif opcion == "3":
-                console.print("\n[bold magenta]--- Ejecutando Apartado 4.3 ---[/bold magenta]")
+                console.print("\n[bold magenta]--- Running section 4.3 ---[/bold magenta]")
                 apartado_3(cursor)
-                console.print("[bold green]Carga finalizada. Ya puedes consultar los datos en Neo4J.[/bold green]")
+                console.print("[bold green]Load finished. You can now query the data in Neo4j.[/bold green]")
                 
             elif opcion == "4":
-                console.print("\n[bold magenta]--- Ejecutando Apartado 4.4 ---[/bold magenta]")
+                console.print("\n[bold magenta]--- Running section 4.4 ---[/bold magenta]")
                 apartado_4(cursor)
-                console.print("[bold green]Carga finalizada. Ya puedes consultar los datos en Neo4J.[/bold green]")
+                console.print("[bold green]Load finished. You can now query the data in Neo4j.[/bold green]")
                 
             elif opcion == "0":
-                console.print("\n[bold blue]¡Hasta pronto![/bold blue]")
+                console.print("\n[bold blue]See you soon![/bold blue]")
                 break
-                
+
     except KeyboardInterrupt:
-        console.print("\n[bold red]Ejecución interrumpida por el usuario.[/bold red]")
+        console.print("\n[bold red]Execution interrupted by the user.[/bold red]")
     except Exception as e:
-        console.print(f"\n[bold red] Ha ocurrido un error inesperado: {e}[/bold red]")
+        console.print(f"\n[bold red] An unexpected error occurred: {e}[/bold red]")
     finally:
         cursor.close()
         conn_sql.close()
