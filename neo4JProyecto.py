@@ -4,6 +4,7 @@ from neo4j import GraphDatabase
 import configuracion as conf 
 import load_data as db 
 import math
+import os
 import random
 from rich.console import Console
 from rich.prompt import Prompt
@@ -12,8 +13,9 @@ from rich.panel import Panel
 
 console = Console()
 
-uri = "neo4j://localhost:7687"
-driver = GraphDatabase.driver(uri, auth=("neo4j", "YOUR_NEO4J_PASSWORD"))
+# Neo4j connection settings are read from environment variables (never hard-code credentials)
+uri = os.environ.get("NEO4J_URI", "neo4j://localhost:7687")
+driver = GraphDatabase.driver(uri, auth=(os.environ.get("NEO4J_USER", "neo4j"), os.environ.get("NEO4J_PASSWORD", "")))
 
 def limpiar_base_datos():
     """

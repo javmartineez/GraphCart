@@ -61,7 +61,13 @@ pip install -r requirements.txt
 ```
 
 1. Download the 5-core review files for *Toys and Games*, *Video Games*, *Digital Music* and *Musical Instruments* (and optionally *Sports and Outdoors*) from the [Amazon Review Data](https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html) collection and place them in `data/`.
-2. Set your connection settings in `configuracion.py` (MySQL / MongoDB) and the Neo4j URI and credentials in `neo4JProyecto.py`.
+2. Set your MySQL / MongoDB connection settings in `configuracion.py`, and provide the Neo4j credentials through environment variables:
+
+   ```bash
+   export NEO4J_URI=neo4j://localhost:7687
+   export NEO4J_USER=neo4j
+   export NEO4J_PASSWORD=<your-password>
+   ```
 3. Run the components:
 
 ```bash
